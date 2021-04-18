@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; 
@@ -10,10 +11,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 // Place in another .sol and import
 contract PriceConsumerV3
 {
-    function getTokenPrice(address token) public view returns (int);
-    function oracleAvailable (address token) private returns(bool);
-    function addOracle (address token) public OnlyOwner;
-    function delOracle (address token) public OnlyOwner;
+    function getTokenPrice(address token) public returns (int256) {}
+    function oracleAvailable (address token) private returns(bool) {}
+    function addOracle (address token) public {}
+    function delOracle (address token) public {}
 }
 
 contract plainLang is Ownable 
@@ -25,14 +26,14 @@ contract plainLang is Ownable
     mapping(address => bool) public agreement_tokens;  // Default for each value is false 
 
     //Private state variables
-    int PLAIN_fee = 1 * PLAIN;          // Initial fee for using plainLang
-    address priceConsumer=0x0;                // Address of the PriceConsumerV3 contract    
+    uint256 PLAIN_fee = 1 * PLAIN;          // Initial fee for using plainLang
+    address priceConsumer=address(0x0);                // Address of the PriceConsumerV3 contract    
     Agreement[] agreements; // Each element in the array is an agreement. Starting with agreement 0
     address private priceContract;          // Fill in initial price contract address after deploying
     address private plainToken;             // PLAIN token address
        
     // Private constants
-    address private constant LINK_MAINNETLINK = 0x514910771af9ca656af840dff83e8264ecf986ca;
+    //address private constant LINK_MAINNETLINK = 0x514910771af9ca656af840dff83e8264ecf986ca;
     address private constant LINK_RINKEBY = 0xa36085F69e2889c224210F603D836748e7dC0088;
     uint256 private constant PLAIN = 10**18;        
     uint private constant DAY = 24*60*60;   // One day in seconds. Used because contract and Ethereum use Epoch time
@@ -49,8 +50,8 @@ contract plainLang is Ownable
         uint agreement_date;        // Will be set when the originator creates the agreement
         uint close_date;            // Date when the agreement is closed and either party may trigger closeAgreement 
 
-        int price_at_agreement;     // Price when agreement is created by originator
-        uint256 multiplier;         // Multiplier against price difference. In this version, multiplier = amount_staked
+        uint256 price_at_agreement;  // Price when agreement is created by originator
+        uint256 multiplier;          // Multiplier against price difference. In this version, multiplier = amount_staked
 
         uint256 premium;            // Premium for agreement to cover losses
         uint256 payment;
@@ -60,12 +61,11 @@ contract plainLang is Ownable
 
     // EVENTS
     event AgreementCreated(uint256 agreementNumber, address originator, address token, uint close_date, uint price_at_agreemnet, 
-                            uint256 int multiplier, uint256 premium, uint256 amountStaked);
+                            uint256 multiplier, uint256 premium, uint256 amountStaked);
     event CounterpartyAccepted(uint256 agreementNumber, address counterparty);
 
     // Constructor takes addresses of PLAIN contract and PriceConsumerV3 as arguments
-    constructor(address _plainToken, address _priceContract) 
-        public 
+    constructor(address _plainToken, address _priceContract)  
     {        
         //token = LINK_RINKEBY;
         agreement_tokens[LINK_RINKEBY]=true;  // Start with LINK
@@ -78,27 +78,28 @@ contract plainLang is Ownable
     // Only whole numbers of tokens may be staked
     // Staked tokens are held until the agreement is closed, at which time the staked tokens are
     // first used to pay the counter_party, if required, and the remainder are returned to staker. 
-    function createAgreement(uint256 _amount_staked, uint256 _premium, uint days, address _requiredParty) 
+    function createAgreement(address _token, uint256 _amount_staked, uint256 _premium, uint length, address _requiredParty) 
         public 
     {
-        Agreement private current_agreement;
+        Agreement memory current_agreement;
         
         // Need to first get staked tokens from originator
         // Correct tokens, proceed
-        PriceConsumerV3 getPrice = PriceConsumerV3(PRICE_CONTRACT);
+        PriceConsumerV3 getPrice = PriceConsumerV3(priceContract);
 
         // Verify agreement and stake before making any changes to state
-        IERC20(token).transferFrom(msg.sender, address(this), number_staked + fee); // Reverts due to SafeMath subtraction if allowance is insufficient
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount_staked); // Reverts due to SafeMath subtraction if allowance is insufficient
 
         // Create Agreement and fill in struct variable
         // Verify the agreement before saving to array of Agreements below
-        current_agreement.price_at_agreement = getPrice.getLINKPrice(); // Set first because originator's intent is to use current price
+        current_agreement.token = _token;
+        current_agreement.price_at_agreement = uint256(getPrice.getTokenPrice(_token)); // Set first because originator's intent is to use current price
         current_agreement.agreement_date = setAgreementDate();          // Set second because the same
         current_agreement.originator = msg.sender;
         current_agreement.requiredParty = _requiredParty;
         current_agreement.counterparty = address(0x0);
-        current_agreement.close_date = now + (DAY*days);
-        current_agreement.multiplier = number_staked;
+        current_agreement.close_date = block.timestamp + (DAY*length);
+        current_agreement.multiplier = _amount_staked;
         current_agreement.amount_staked = _amount_staked;
         current_agreement.premium = _premium;                           // Premium in wei
         current_agreement.closed = false;                               // Set to true when agreement date has passed and party calls closeAgreement()
@@ -111,9 +112,10 @@ contract plainLang is Ownable
     // getPLAINFee transfers the PLAIN token fee from the originator to the contract
     function getPLAINFee(address payor) 
         private 
-        returns bool 
+        returns(bool) 
     {
         IERC20(plainToken).transferFrom(payor, address(this), fee);
+        return true;
     }
 
     // Receive premium from the counterparty
@@ -124,7 +126,7 @@ contract plainLang is Ownable
         require(agreements[agreement_number].closed == false, "Agreement has already closed");
 
         // Second, can't have a counter-party yet
-        require(agreements[agreement_number].counter_party == address(0x0), "Agreement already has counter party"); 
+        require(agreements[agreement_number].counterparty == address(0x0), "Agreement already has counter party"); 
 
         if (agreements[agreement_number].requiredParty != address(0x0))
         {
@@ -134,14 +136,16 @@ contract plainLang is Ownable
         transferPremium(agreement_number);  // Get premium from counter party
         
         // After agreement verified and premium received, memorialize agreement
-        agreements[agreement_number].counter_party = msg.sender;
+        agreements[agreement_number].counterparty = msg.sender;
     }
 
     // Use Chainlink API to query date and set date of agreement
-    function setAgreementDate(uint256 agreement_number) 
+    function setAgreementDate() 
         private 
+        view
+        returns (uint)
     {
-        agreements[agreement_number].agreement_date = block.timestamp;          // Agreement date is set to current block timestamp 
+        return block.timestamp;          // Agreement date is set to current block timestamp 
     }
 
     // Transfer premium to originator after contract ensures that correct amount transferred to 
@@ -151,7 +155,7 @@ contract plainLang is Ownable
     {
         //Transfer premium tokens into the contract to be transferred to originator when agreement is finalized
         // Emits a "Transfer" event. May not be needed
-        IERC20(agreements[agreement_number].token).transferFrom(agreements[agreement_number].counter_party, agreements[agreement_number].originator, agreements[agreement_number].premium); // Reverts due to SafeMath subtraction if allowance is insufficient
+        IERC20(agreements[agreement_number].token).transferFrom(agreements[agreement_number].counterparty, agreements[agreement_number].originator, agreements[agreement_number].premium); // Reverts due to SafeMath subtraction if allowance is insufficient
     }
 
     // Called by either originator or counter_party.
@@ -163,20 +167,22 @@ contract plainLang is Ownable
     {
         uint256 payment; // Amount of payment to counterparty
         
-        require(msg.sender == agreements[agreement_number].originator || msg.sender == agreements[agreement_number].counter_party, "Agreement can only be closed by the agreement originator or counter party");
+        require(msg.sender == agreements[agreement_number].originator || msg.sender == agreements[agreement_number].counterparty, "Agreement can only be closed by the agreement originator or counter party");
 
         if (agreements[agreement_number].counterparty == address(0x0)) 
         {
             // Send back stake, if any remains
-            IERC20(token).transfer(address(this), agreements[agreement_number].originator, agreements[agreement_number].amount_staked); // Reverts due to SafeMath subtraction if allowance is insufficient
+            IERC20(agreements[agreement_number].token).transfer(agreements[agreement_number].originator, agreements[agreement_number].amount_staked); // Reverts due to SafeMath subtraction if allowance is insufficient
             agreements[agreement_number].amount_staked = 0;
             agreements[agreement_number].closed = true;
         }
         
         if (agreementClosed(agreement_number)) {
-            agreements[agreement_number].payment = calculatePayment();
-            if (payment > 0) {
+            agreements[agreement_number].payment = uint256(calculatePayment(agreement_number));
+            if (payment > 0) 
+            {
                 makePayment(agreement_number);
+            }
         }
     
         agreements[agreement_number].closed = true;         // Close the agreement. Can't be resurrected
@@ -185,21 +191,21 @@ contract plainLang is Ownable
     // Calculate the number of tokens (may be fractional) to be transferred to counterparty
     function calculatePayment(uint256 agreement_number)
         private 
-        returns(uint256) // Returns amount of payment  
+        returns(int256) // Returns amount of payment  
     {
         // Call Chainlink oracle to get the current price
-        PriceConsumerV3 p = PriceConsumerV3(PC_addr);
-        uint256 current_price;
-        uint256 payment;
+        PriceConsumerV3 p = PriceConsumerV3(priceContract);
+        int256 current_price;
+        int256 payment;
         
         current_price = p.getTokenPrice(agreements[agreement_number].token);
-        if (current_price >= agreements[agreement_number])
+        if (uint256(current_price) >= agreements[agreement_number].price_at_agreement)
         {
             payment = 0;
         }
         else
         {
-            payment = (current_price - agreements[agreement_number].price_at_agreement)*agreements[agreement_number].multiplier;
+            payment = (current_price - int256(agreements[agreement_number].price_at_agreement*agreements[agreement_number].multiplier));
         }
 
         return payment;
@@ -209,7 +215,7 @@ contract plainLang is Ownable
     function makePayment (uint256 agreement_number)
         private 
     {
-        IERC20(agreements[agreement_number].token).transfer(address(this), agreements[agreement_number].originator, agreements[agreement_number].payment);
+        IERC20(agreements[agreement_number].token).transfer(agreements[agreement_number].originator, agreements[agreement_number].payment);
     }
 
     // agreementClosed Changes agreemend to "closed" and returns true if the current date is on or after the closte_date
@@ -217,8 +223,8 @@ contract plainLang is Ownable
         private 
         returns(bool)
     {
-        require(now >= close_date, "Agreement is not yet closed. Try again later.");    // Unix Epoch time
-        agreement[agreement_number].closed = true;                                      // Agreement is closed
+        require(block.timestamp >= agreements[agreement_number].close_date, "Agreement is not yet closed. Try again later.");    // Unix Epoch time
+        agreements[agreement_number].closed = true;                                      // Agreement is closed
         return true;
     }
 
@@ -263,6 +269,6 @@ contract plainLang is Ownable
         public
         onlyOwner
     {
-        PC_addr = pc;                       // New address of the priceConsumer contract, used to get price of tokens used in agreement.
+        priceContract = pc;                       // New address of the priceConsumer contract, used to get price of tokens used in agreement.
     }
 }

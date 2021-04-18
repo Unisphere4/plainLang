@@ -140,8 +140,8 @@
       ]
     },
     "/home/chris/dev/plainlang/contracts/PriceConsumerV3.sol": {
-      "lastModificationDate": 1618685041647,
-      "contentHash": "f09a36f3785823a7cfc3b2629447e225",
+      "lastModificationDate": 1618710457709,
+      "contentHash": "c7017e8ca5986b1ccc48193b1e26a173",
       "sourceName": "contracts/PriceConsumerV3.sol",
       "solcConfig": {
         "version": "0.8.0",
@@ -174,6 +174,118 @@
       ],
       "artifacts": [
         "PriceConsumerV3"
+      ]
+    },
+    "/home/chris/dev/plainlang/contracts/plainLang.sol": {
+      "lastModificationDate": 1618710505540,
+      "contentHash": "809915b532b76101a93ec38736130d0a",
+      "sourceName": "contracts/plainLang.sol",
+      "solcConfig": {
+        "version": "0.8.0",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "PriceConsumerV3",
+        "plainLang"
+      ]
+    },
+    "/home/chris/dev/plainlang/contracts/DEX.sol": {
+      "lastModificationDate": 1618713269493,
+      "contentHash": "f6da53152fcf700d57785d6e26231515",
+      "sourceName": "contracts/DEX.sol",
+      "solcConfig": {
+        "version": "0.8.0",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "DEX"
+      ]
+    },
+    "/home/chris/dev/plainlang/contracts/PLAINToken.sol": {
+      "lastModificationDate": 1618713269493,
+      "contentHash": "d605ba2b45cdaeeeb333562235025031",
+      "sourceName": "contracts/PLAINToken.sol",
+      "solcConfig": {
+        "version": "0.8.0",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.0"
+      ],
+      "artifacts": [
+        "PLAINToken"
       ]
     }
   }

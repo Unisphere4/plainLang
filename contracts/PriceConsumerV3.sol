@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // oracle address for a token will be 0x0 if the feed has not been added to the contract
 pragma solidity ^0.8.0;
 
@@ -22,8 +23,7 @@ contract PriceConsumerV3 is Ownable {
         address oracle = oracle_addresses[token];
         
         require(oracleAvailable(token) != false, "The oracle you requested is not available");
-        return int256(0);
-        
+                
         AggregatorV3Interface priceFeed = AggregatorV3Interface(oracle);
         (
             uint80 roundID, 
