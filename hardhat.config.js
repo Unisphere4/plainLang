@@ -36,9 +36,18 @@ module.exports = {
     spacing: 2
   },
   networks: {
-    rinkeby: {
+    /*rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/R5ThfUtxW3rZT-rl2sJKVmppPyAiP918`,
       accounts: [`0x6c14a598cb42ae418c83c600fae61d789bfda6da481ebfb4edbbbc5466ad07f0`]
-    }
-  }  
+    }*/
+    hardhat: {
+      //accounts: {
+      //  accountsBalance: "100000000000000000000000"   // 100,000 ETH
+      //  }
+      forking: {
+        url: "https://eth-rinkeby.alchemyapi.io/v2/R5ThfUtxW3rZT-rl2sJKVmppPyAiP918",
+        blockNumber: 8466452
+      }
+    }  
+  }
 };

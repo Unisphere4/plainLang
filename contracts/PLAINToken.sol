@@ -100,8 +100,8 @@ contract PLAINToken is IERC20
         override
         returns (bool) 
     {
-        require(numTokens <= balances[owner]);
-        require(numTokens <= allowed[owner][msg.sender]);
+        require(numTokens <= balances[owner], "Can't transfer more tokens than the owner owns");
+        require(numTokens <= allowed[owner][msg.sender], "Can't transfer more tokens than permitted by owner");
 
         balances[owner] = balances[owner] - (numTokens);
         allowed[owner][msg.sender] = allowed[owner][msg.sender] - numTokens;
