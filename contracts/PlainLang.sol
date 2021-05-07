@@ -22,14 +22,16 @@ contract PlainLang is Ownable
 
     //Private state variables
     uint256 PLAIN_fee = 1 * PLAIN;          // Initial fee for using plainLang
-    address priceConsumer;     // Address of the PriceConsumerV3 contract    
-    Agreement[] public agreements; // Each element in the array is an agreement. Starting with agreement 0
+    address priceConsumer;                  // Address of the PriceConsumerV3 contract    
+    Agreement[] public agreements;          // Each element in the array is an agreement. Starting with agreement 0
     address private priceContract;          // Fill in initial price contract address after deploying
     address private plainToken;             // PLAIN token address
        
     // Private constants
     //address private constant LINK_MAINNETLINK = 0x514910771af9ca656af840dff83e8264ecf986ca;
     address private constant LINK_RINKEBY = 0xa36085F69e2889c224210F603D836748e7dC0088;
+    /*address private constant DAI_RINKEBY = 0x8f2e097e79b1c51be9cba42658862f0192c3e487;
+    address private constant USDC_RINKEBY = 0x7d66cde53cc0a169cae32712fc48934e610aef14;*/
     uint256 private constant PLAIN = 10**18;        
     uint private constant DAY = 24*60*60;   // One day in seconds. Used because contract and Ethereum use Epoch time
 
@@ -48,7 +50,7 @@ contract PlainLang is Ownable
         uint256 price_at_agreement;  // Price when agreement is created by originator
         uint256 multiplier;          // Multiplier against price difference. In this version, multiplier = amount_staked
 
-        uint256 premium;            // Premium for agreement to cover losses
+        uint256 premium;            // Premium for agreement to cover losses - Denominated in PLAIN
         uint256 payment;
         uint256 amountStaked;      // Number of tokens staked by counter_party
         bool closed;                // True if agreement has already been closed. Default=false, which is correct.
@@ -58,6 +60,7 @@ contract PlainLang is Ownable
     event AgreementCreated(uint256 agreementNumber, address originator, address token, uint close_date, uint price_at_agreemnet, 
                             uint256 multiplier, uint256 premium, uint256 amountStaked);
     event CounterpartyAccepted(uint256 agreementNumber, address counterparty);
+    event AgreementClosed(uint256 agreementNumber, uint256 amountPaid);
 
     // Constructor takes addresses of PLAIN contract and PriceConsumerV3 as arguments
     constructor(address _plainToken, address _priceContract)  
@@ -100,9 +103,10 @@ contract PlainLang is Ownable
         current_agreement.closed = false;                               // Set to true when agreement date has passed and party calls closeAgreement()
 
         getPLAINFee(address(msg.sender));
+        getDeposit(address(msg.sender), current_agreement.token, _amount_staked);
 
         agreements.push(current_agreement);     // Add current agreement to array of agreements
-        emit AgreementCreated(agreements.length, current_agreement.originator, current_agreement.token, current_agreement.close_date, current_agreement.price_at_agreement, 
+        emit AgreementCreated(agreements.length-1, current_agreement.originator, current_agreement.token, current_agreement.close_date, current_agreement.price_at_agreement, 
                             current_agreement.multiplier, current_agreement.premium, current_agreement.amountStaked);
     }
 
@@ -111,10 +115,17 @@ contract PlainLang is Ownable
         private 
         returns(bool) 
     {
-        IERC20(address(plainToken)).transferFrom(address(payor), address(this), fee);
+        IERC20(plainToken).transferFrom(address(payor), address(this), fee);
         return true;
     }
 
+    // Get the originator's token deposit, which will be held in reserve to cover the counterparty's risk
+    function getDeposit(address _originator, address _token, uint256 _amount)
+        private
+    {
+        IERC20(_token).transferFrom(_originator, address(this), _amount); 
+    }
+    
     // Receive premium from the counterparty
     function acceptPremium(uint256 agreement_number) 
         public 
@@ -130,10 +141,11 @@ contract PlainLang is Ownable
             require(agreements[agreement_number].requiredParty==address(msg.sender), "This agreement has a required counterparty");
         }
 
-        transferPremium(agreement_number);  // Get premium from counter party
-        
         // After agreement verified and premium received, memorialize agreement
         agreements[agreement_number].counterparty = msg.sender;
+        transferPremium(agreement_number);  // Get premium from counter party
+
+        emit CounterpartyAccepted(agreement_number, msg.sender);
     }
 
     // Use Chainlink API to query date and set date of agreement
@@ -152,7 +164,7 @@ contract PlainLang is Ownable
     {
         //Transfer premium tokens into the contract to be transferred to originator when agreement is finalized
         // Emits a "Transfer" event. May not be needed
-        IERC20(agreements[agreement_number].token).transferFrom(agreements[agreement_number].counterparty, agreements[agreement_number].originator, agreements[agreement_number].premium); // Reverts due to SafeMath subtraction if allowance is insufficient
+        IERC20(plainToken).transferFrom(agreements[agreement_number].counterparty, address(this), agreements[agreement_number].premium);
     }
 
     // Called by either originator or counter_party.
@@ -173,36 +185,38 @@ contract PlainLang is Ownable
             agreements[agreement_number].amountStaked = 0;
             agreements[agreement_number].closed = true;
         }
-        
-        if (agreementClosed(agreement_number)) {
-            agreements[agreement_number].payment = uint256(calculatePayment(agreement_number));
-            if (payment > 0) 
+        else if (agreementClosed(agreement_number)) {
+            agreements[agreement_number].payment = calculatePayment(agreement_number);
+            if (agreements[agreement_number].payment > 0) 
             {
                 makePayment(agreement_number);
             }
         }
     
         agreements[agreement_number].closed = true;         // Close the agreement. Can't be resurrected
+
+        //emit AgreementClosed(agreement_number, agreements[agreement_number].payment);
     }
 
     // Calculate the number of tokens (may be fractional) to be transferred to counterparty
     function calculatePayment(uint256 agreement_number)
         private 
-        returns(int256) // Returns amount of payment  
+        returns(uint256) // Returns amount of payment  
     {
         // Call Chainlink oracle to get the current price
         IPriceConsumerV3 p = IPriceConsumerV3(priceContract);
         int256 current_price;
-        int256 payment;
+        uint256 payment;
         
-        current_price = p.getTokenPrice(agreements[agreement_number].token);
+        //current_price = p.getTokenPrice(agreements[agreement_number].token);
+        current_price = 0x5e00; //For testing only! Uncomment prior line and comment/remove this one.
         if (uint256(current_price) >= agreements[agreement_number].price_at_agreement)
         {
             payment = 0;
         }
         else
         {
-            payment = (current_price - int256(agreements[agreement_number].price_at_agreement*agreements[agreement_number].multiplier));
+            payment = (uint256(current_price) * agreements[agreement_number].multiplier) / agreements[agreement_number].price_at_agreement; //*agreements[agreement_number].multiplier;
         }
 
         return payment;
@@ -212,7 +226,7 @@ contract PlainLang is Ownable
     function makePayment (uint256 agreement_number)
         private 
     {
-        IERC20(agreements[agreement_number].token).transfer(agreements[agreement_number].originator, agreements[agreement_number].payment);
+        IERC20(agreements[agreement_number].token).transfer(agreements[agreement_number].counterparty, agreements[agreement_number].payment);//agreements[agreement_number].payment);
     }
 
     // agreementClosed Changes agreemend to "closed" and returns true if the current date is on or after the closte_date
@@ -241,11 +255,11 @@ contract PlainLang is Ownable
         PLAIN_fee = _PLAIN_fee;
     }
 
-    function addToken(address token) 
+    function addToken(address _token) 
         public
         onlyOwner
     {
-        agreement_tokens[token]=true;
+        agreement_tokens[_token]=true;
     }
 
     function removeToken(address _token)

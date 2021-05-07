@@ -143,8 +143,8 @@
       ]
     },
     "/home/chris/dev/plainlang/contracts/PLAINToken.sol": {
-      "lastModificationDate": 1619269763566,
-      "contentHash": "5e1d52042ae01ebda54a59fb7ccfc6bb",
+      "lastModificationDate": 1619747864949,
+      "contentHash": "39b17ce4274cb10d84e58d7bb94755ca",
       "sourceName": "contracts/PLAINToken.sol",
       "solcConfig": {
         "version": "0.8.0",
@@ -251,8 +251,8 @@
       ]
     },
     "/home/chris/dev/plainlang/contracts/PlainLang.sol": {
-      "lastModificationDate": 1619354405008,
-      "contentHash": "bc99ecce29c2fa6ee2ee2c416c07471b",
+      "lastModificationDate": 1619880289568,
+      "contentHash": "7309b47b0666052c63163958df650e5f",
       "sourceName": "contracts/PlainLang.sol",
       "solcConfig": {
         "version": "0.8.0",
